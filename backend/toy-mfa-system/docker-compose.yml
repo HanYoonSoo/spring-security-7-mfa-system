@@ -1,0 +1,32 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: mfa-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: mfa
+      MYSQL_USER: mfa
+      MYSQL_PASSWORD: mfa
+    ports:
+      - "30200:3306"
+    volumes:
+      - ./docker/mfa_data:/var/lib/mysql
+    networks:
+      - mfa_network
+
+  valkey:
+    image: bitnami/valkey:latest
+    container_name: mfa-valkey
+    restart: always
+    environment:
+      - VALKEY_PASSWORD=password
+    ports:
+      - "30300:6379"
+    volumes:
+      - ./docker/valkey_data:/bitnami/valkey/data
+    networks:
+      - mfa_network
+
+networks:
+  mfa_network:

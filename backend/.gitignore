@@ -35,3 +35,7 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Docker Data (MySQL / Valkey) ###
+toy-mfa-system/docker/mfa_data/
+toy-mfa-system/docker/valkey_data/
