@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MFA Callback</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <main class="layout">
+      <header class="hero">
+        <h1>MFA Callback</h1>
+        <p>매직링크 토큰을 검증하고 세션을 갱신합니다.</p>
+      </header>
+
+      <section class="panel">
+        <h2>Verify</h2>
+        <p class="hint">페이지 진입 시 토큰 검증을 자동으로 수행합니다.</p>
+        <div id="callback-status" class="callback-status pending">
+          <div id="callback-icon" class="callback-icon">...</div>
+          <div>
+            <p id="callback-title" class="callback-title">Checking Authentication</p>
+            <p id="callback-message" class="callback-message">인증 상태를 확인하고 있습니다.</p>
+          </div>
+        </div>
+        <div class="actions">
+          <button id="btn-go-back" disabled>원래 페이지로 돌아가기</button>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="/src/callback.js"></script>
+  </body>
+</html>
