@@ -1,4 +1,6 @@
 package com.hanyoonsoo.mfa.api.dto.request;
 
-public record SignInRequest {
-}
+public record SignInRequest(
+  String username,
+  String password
+) {}
