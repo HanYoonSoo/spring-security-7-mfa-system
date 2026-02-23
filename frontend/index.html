@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Toy MFA Frontend</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <main class="layout">
+      <header class="hero">
+        <h1>Toy MFA Test Console</h1>
+        <p>Spring Security OTT 기반 MFA 동작 확인용 프론트</p>
+      </header>
+
+      <section class="panel" id="session-panel">
+        <h2>Session</h2>
+        <div class="grid2">
+          <div>
+            <label>Access Token</label>
+            <textarea id="access-token" rows="4" readonly></textarea>
+          </div>
+          <div>
+            <label>Decoded Payload</label>
+            <pre id="token-payload">{}</pre>
+          </div>
+        </div>
+        <div class="actions">
+          <button id="btn-clear-session" class="ghost">세션 초기화</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>1) User Setup / Sign In</h2>
+        <div class="grid3">
+          <div>
+            <label>Username</label>
+            <input id="username" placeholder="tester" />
+          </div>
+          <div>
+            <label>Password</label>
+            <input id="password" type="password" placeholder="password" />
+          </div>
+          <div>
+            <label>Email</label>
+            <input id="email" placeholder="tester@example.com" />
+          </div>
+        </div>
+        <div class="actions">
+          <button id="btn-sign-up">회원 생성</button>
+          <button id="btn-sign-in">로그인 (PASSWORD factor)</button>
+          <button id="btn-me">내 정보 조회 (/users/me)</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>2) MFA Magic Link</h2>
+        <p class="hint">로그인 후 OTP 생성 요청 시 이메일로 매직링크가 발송됩니다.</p>
+        <div class="actions">
+          <button id="btn-generate-ott">매직링크 발송 요청</button>
+        </div>
+
+        <div class="grid2 mt16">
+          <div>
+            <label>수동 토큰 입력 (디버그)</label>
+            <input id="manual-token" placeholder="email token" />
+          </div>
+          <div class="actions align-end">
+            <button id="btn-verify-manual">토큰 수동 검증</button>
+          </div>
+        </div>
+
+        <p class="hint mt12">콜백 페이지 예시: <code>/mfa/callback.html?token=...</code> 이 URL로 접속하면 자동 검증합니다.</p>
+      </section>
+
+      <section class="panel">
+        <h2>3) Post APIs</h2>
+        <p class="hint">GET: PASSWORD 필요, POST: PASSWORD + OTT 필요</p>
+        <div class="grid2">
+          <div>
+            <label>Title</label>
+            <input id="post-title" placeholder="제목" />
+          </div>
+          <div>
+            <label>Content</label>
+            <input id="post-content" placeholder="내용" />
+          </div>
+        </div>
+        <div class="actions">
+          <button id="btn-list-posts">포스트 조회</button>
+          <button id="btn-create-post">포스트 생성</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Output</h2>
+        <pre id="output"></pre>
+      </section>
+    </main>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
