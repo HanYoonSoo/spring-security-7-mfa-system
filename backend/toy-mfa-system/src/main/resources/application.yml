@@ -4,6 +4,8 @@ spring:
       hibernate:
         default_batch_fetch_size: 100
         query.in_clause_parameter_padding: true
+        show_sql: true
+        format_sql: true
     open-in-view: false
     hibernate:
       ddl-auto: update
@@ -13,8 +15,8 @@ spring:
     password: ${MFA_DB_PASSWORD:mfa}
     driver-class-name: com.mysql.cj.jdbc.Driver
   mail:
-    host: ${MFA_MAIL_HOST:}
-    port: ${MFA_MAIL_PORT:}
+    host: ${MFA_MAIL_HOST:smtp.gmail.com}
+    port: ${MFA_MAIL_PORT:587}
     username: ${MFA_MAIL_USERNAME:}
     password: ${MFA_MAIL_PASSWORD:}
     properties:
@@ -32,3 +34,22 @@ redis:
   host: ${MFA_REDIS_HOST:localhost}
   port: ${MFA_REDIS_PORT:30300}
   password: ${MFA_REDIS_PASSWORD:password}
+
+jwt:
+  secret: ${MFA_JWT_SECRET:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=}
+  issuer: ${MFA_JWT_ISSUER:toy-mfa-system}
+  token:
+    access-token-expiration: ${MFA_JWT_ACCESS_TOKEN_EXPIRATION:1800}
+    refresh-token-expiration: ${MFA_JWT_REFRESH_TOKEN_EXPIRATION:1296000}
+
+cookie:
+  same-site: Lax
+  secure: false
+
+cors:
+  allowed:
+    origins:
+      - http://localhost:3000
+
+mfa:
+  magic-link-base-url: ${MFA_MAGIC_LINK_BASE_URL:http://localhost:3000/mfa/callback.html}
