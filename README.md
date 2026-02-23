@@ -1,4 +1,4 @@
-# toy-mfa-system
+# spring-security-7-mfa-system
 
 Spring Security 7의 MFA FACTOR(`PASSWORD`, `OTT`)를 실제로 적용해보기 위한 학습/검증용 프로젝트입니다.
 
