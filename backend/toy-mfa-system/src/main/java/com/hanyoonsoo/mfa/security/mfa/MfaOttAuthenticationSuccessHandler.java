@@ -59,7 +59,6 @@ public class MfaOttAuthenticationSuccessHandler implements AuthenticationSuccess
         );
 
         ResponseCookie refreshCookie = jwtProvider.generateRefreshCookie(refreshToken);
-        TokenResponse tokenResponse = new TokenResponse(accessToken, refreshCookie);
 
         response.addHeader(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken);
         response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());

@@ -58,54 +58,60 @@ public class RedisOneTimeTokenService implements OneTimeTokenService {
         }
 
         String tokenHash = sha256(tokenValue);
-        if (readAttempts(tokenHash) >= MAX_ATTEMPTS) {
+        if (isAttemptExceeded(tokenHash)) {
             log.warn("OTT consume failed: too many attempts. tokenHash={}", tokenHash);
             return null;
         }
 
-        String key = tokenKey(tokenHash);
-        String value = redisTemplate.opsForValue().get(key);
+        TokenLookupResult lookupResult = lookupToken(tokenHash);
+        if (!lookupResult.success()) {
+            handleFailure(tokenHash, lookupResult);
+            return null;
+        }
+
+        redisTemplate.delete(tokenKey(tokenHash));
+        redisTemplate.delete(attemptKey(tokenHash));
+        log.info("OTT consume success. username={}", lookupResult.userId());
+        return new DefaultOneTimeToken(tokenValue, lookupResult.userId(), lookupResult.expiresAt());
+    }
+
+    private boolean isAttemptExceeded(String tokenHash) {
+        return readAttempts(tokenHash) >= MAX_ATTEMPTS;
+    }
+
+    private TokenLookupResult lookupToken(String tokenHash) {
+        String value = redisTemplate.opsForValue().get(tokenKey(tokenHash));
         if (value == null || value.isBlank()) {
-            log.warn("OTT consume failed: token not found or already consumed. tokenHash={}", tokenHash);
-            return fail(tokenHash);
+            return TokenLookupResult.notFound();
         }
 
         String[] parts = value.split("\\|", 2);
         if (parts.length != 2) {
-            log.warn("OTT consume failed: malformed token payload in redis. tokenHash={}", tokenHash);
-            return fail(tokenHash);
+            return TokenLookupResult.malformed();
         }
 
-        String storedUserId = parts[0];
-        Instant expiresAt;
         try {
-            expiresAt = Instant.ofEpochMilli(Long.parseLong(parts[1]));
+            Instant expiresAt = Instant.ofEpochMilli(Long.parseLong(parts[1]));
+            return TokenLookupResult.success(parts[0], expiresAt);
         } catch (NumberFormatException e) {
-            log.warn("OTT consume failed: invalid expiresAt format. tokenHash={}", tokenHash);
-            return fail(tokenHash);
+            return TokenLookupResult.malformed();
         }
-
-        if (expiresAt.isBefore(clock.instant())) {
-            log.warn("OTT consume failed: token expired. tokenHash={}, expiresAt={}", tokenHash, expiresAt);
-            return failAndDelete(tokenHash, key);
-        }
-
-        redisTemplate.delete(key);
-        redisTemplate.delete(attemptKey(tokenHash));
-        log.info("OTT consume success. username={}", storedUserId);
-        return new DefaultOneTimeToken(tokenValue, storedUserId, expiresAt);
     }
 
-    @Nullable
-    private OneTimeToken fail(String subjectKey) {
-        increaseAttempts(subjectKey, ATTEMPT_TTL);
-        return null;
-    }
+    private void handleFailure(String tokenHash, TokenLookupResult lookupResult) {
+        switch (lookupResult.status()) {
+            case NOT_FOUND -> log.warn(
+                    "OTT consume failed: token not found or already consumed. tokenHash={}",
+                    tokenHash
+            );
+            case MALFORMED -> log.warn(
+                    "OTT consume failed: malformed token payload in redis. tokenHash={}",
+                    tokenHash
+            );
+            case SUCCESS -> throw new IllegalStateException("Success result must not be handled as failure");
+        }
 
-    @Nullable
-    private OneTimeToken failAndDelete(String subjectKey, String tokenKey) {
-        redisTemplate.delete(tokenKey);
-        return fail(subjectKey);
+        increaseAttempts(tokenHash, ATTEMPT_TTL);
     }
 
     private void increaseAttempts(String subjectKey, Duration ttl) {
@@ -146,6 +152,34 @@ public class RedisOneTimeTokenService implements OneTimeTokenService {
             return sb.toString();
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 algorithm is not available", e);
+        }
+    }
+
+    private enum LookupStatus {
+        SUCCESS,
+        NOT_FOUND,
+        MALFORMED
+    }
+
+    private record TokenLookupResult(
+            LookupStatus status,
+            @Nullable String userId,
+            @Nullable Instant expiresAt
+    ) {
+        private static TokenLookupResult success(String userId, Instant expiresAt) {
+            return new TokenLookupResult(LookupStatus.SUCCESS, userId, expiresAt);
+        }
+
+        private static TokenLookupResult notFound() {
+            return new TokenLookupResult(LookupStatus.NOT_FOUND, null, null);
+        }
+
+        private static TokenLookupResult malformed() {
+            return new TokenLookupResult(LookupStatus.MALFORMED, null, null);
+        }
+
+        private boolean success() {
+            return status == LookupStatus.SUCCESS;
         }
     }
 }
