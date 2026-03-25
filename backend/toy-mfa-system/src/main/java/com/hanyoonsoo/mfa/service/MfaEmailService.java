@@ -1,5 +1,6 @@
 package com.hanyoonsoo.mfa.service;
 
+import com.hanyoonsoo.mfa.infra.redis.repository.RedisMagicLinkRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -13,11 +14,15 @@ import jakarta.mail.internet.MimeMessage;
 @RequiredArgsConstructor
 public class MfaEmailService {
     private final JavaMailSender javaMailSender;
+    private final RedisMagicLinkRepository redisMagicLinkRepository;
 
     public void sendMagicLink(String email, String magicLink) {
         if (!StringUtils.hasText(email) || !StringUtils.hasText(magicLink)) {
             throw new IllegalArgumentException("email and magicLink must not be blank");
         }
+
+        if (redisMagicLinkRepository.isMagicLinkLimitExists(email))
+            throw new IllegalArgumentException("magicLink already exists waiting max 1 minute");
 
         MimeMessage mimeMessage = javaMailSender.createMimeMessage();
         try {
@@ -26,6 +31,7 @@ public class MfaEmailService {
             helper.setSubject("[toy-mfa-system] MFA 인증 링크");
             helper.setText(buildHtmlContent(magicLink), true);
             javaMailSender.send(mimeMessage);
+            redisMagicLinkRepository.saveMagicLinkLimit(email);
         } catch (MessagingException e) {
             throw new RuntimeException("MFA 이메일 전송에 실패했습니다.", e);
         }
