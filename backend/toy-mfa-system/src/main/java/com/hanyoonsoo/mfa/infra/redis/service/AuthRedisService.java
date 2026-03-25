@@ -4,42 +4,40 @@ import com.hanyoonsoo.mfa.infra.email.enums.EmailSendType;
 import com.hanyoonsoo.mfa.infra.redis.enums.AuthCacheEnum;
 import com.hanyoonsoo.mfa.infra.redis.repository.RedisAuthCodeRepository;
 import com.hanyoonsoo.mfa.infra.redis.repository.RedisRefreshTokenRepository;
+import com.hanyoonsoo.mfa.infra.utils.RedisKeys;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
 public class AuthRedisService {
-
-    public static final String AUTH_PREFIX = "AUTH:";
-
     private final RedisRefreshTokenRepository refreshTokenRedisRepository;
     private final RedisAuthCodeRepository authCodeRedisRepository;
 
     public void saveRefreshToken(String userId, String refreshToken, long expireMillis) {
-        refreshTokenRedisRepository.saveRefreshToken(makeRefreshTokenKey(userId), refreshToken, expireMillis);
+        refreshTokenRedisRepository.saveRefreshToken(RedisKeys.refreshToken(userId), refreshToken, expireMillis);
     }
 
     public void matchRefreshTokenOrThrow(String userId, String refreshToken) {
-        refreshTokenRedisRepository.matchRefreshTokenOrThrow(makeRefreshTokenKey(userId), refreshToken);
+        refreshTokenRedisRepository.matchRefreshTokenOrThrow(RedisKeys.refreshToken(userId), refreshToken);
     }
 
     public void deleteRefreshToken(String userId) {
-        refreshTokenRedisRepository.deleteRefreshToken(makeRefreshTokenKey(userId));
+        refreshTokenRedisRepository.deleteRefreshToken(RedisKeys.refreshToken(userId));
     }
 
     public void saveAccessTokenForLogout(String accessToken, long expireMillis) {
-        refreshTokenRedisRepository.saveAccessTokenForLogout(accessToken, expireMillis);
+        refreshTokenRedisRepository.saveAccessTokenForLogout(RedisKeys.logoutAccessToken(accessToken), expireMillis);
     }
 
     public boolean isLogoutAccessToken(String accessToken) {
-        return refreshTokenRedisRepository.isLogoutAccessToken(accessToken);
+        return refreshTokenRedisRepository.isLogoutAccessToken(RedisKeys.logoutAccessToken(accessToken));
     }
 
     public void saveAuthCode(String email, String authCode, EmailSendType emailSendType) {
         AuthCacheEnum authCacheEnum = emailSendType.getCacheEnum();
         authCodeRedisRepository.saveAuthCode(
-                makeAuthCodeRedisKey(authCacheEnum, email),
+                RedisKeys.authCode(authCacheEnum, email),
                 authCode,
                 authCacheEnum.getExpirationTime()
         );
@@ -47,7 +45,7 @@ public class AuthRedisService {
 
     public String findAuthCode(String email, EmailSendType emailSendType) {
         AuthCacheEnum authCacheEnum = emailSendType.getCacheEnum();
-        return authCodeRedisRepository.findAuthCode(makeAuthCodeRedisKey(authCacheEnum, email));
+        return authCodeRedisRepository.findAuthCode(RedisKeys.authCode(authCacheEnum, email));
     }
 
     public void saveAuthCodeVerified(
@@ -58,17 +56,9 @@ public class AuthRedisService {
     ) {
         AuthCacheEnum authCacheEnum = emailSendType.getCacheEnum();
         authCodeRedisRepository.saveAuthCodeVerified(
-                makeAuthCodeRedisKey(authCacheEnum, email),
+                RedisKeys.authCode(authCacheEnum, email),
                 authCodeVerifiedStr,
                 expirationTime
         );
-    }
-
-    private String makeRefreshTokenKey(String userId) {
-        return "user:" + userId + ":refreshToken";
-    }
-
-    public String makeAuthCodeRedisKey(AuthCacheEnum authCacheEnum, String loginId) {
-        return AUTH_PREFIX + authCacheEnum.getPrefix() + loginId;
     }
 }

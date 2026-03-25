@@ -1,5 +1,7 @@
 package com.hanyoonsoo.mfa.security.mfa;
 
+import com.hanyoonsoo.mfa.common.Sha256HashUtils;
+import com.hanyoonsoo.mfa.infra.utils.RedisKeys;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
@@ -15,9 +17,6 @@ import org.springframework.stereotype.Component;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.UUID;
 
 @Component
@@ -25,8 +24,6 @@ import java.util.UUID;
 @NullMarked
 @Slf4j
 public class RedisOneTimeTokenService implements OneTimeTokenService {
-    private static final String TOKEN_PREFIX = "OTT:TOKEN:";
-    private static final String ATTEMPT_PREFIX = "OTT:ATTEMPTS:";
     private static final int MAX_ATTEMPTS = 5;
     private static final Duration ATTEMPT_TTL = Duration.ofMinutes(5);
 
@@ -40,10 +37,10 @@ public class RedisOneTimeTokenService implements OneTimeTokenService {
         Instant expiresAt = now.plus(expiresIn);
 
         String tokenValue = UUID.randomUUID().toString().replace("-", "");
-        String tokenHash = sha256(tokenValue);
+        String tokenHash = Sha256HashUtils.hash(tokenValue);
         String value = request.getUsername() + "|" + expiresAt.toEpochMilli();
 
-        redisTemplate.opsForValue().set(tokenKey(tokenHash), value, expiresIn);
+        redisTemplate.opsForValue().set(RedisKeys.ottToken(tokenHash), value, expiresIn);
         log.info("OTT generated. username={}, expiresAt={}", request.getUsername(), expiresAt);
         return new DefaultOneTimeToken(tokenValue, request.getUsername(), expiresAt);
     }
@@ -57,7 +54,7 @@ public class RedisOneTimeTokenService implements OneTimeTokenService {
             return null;
         }
 
-        String tokenHash = sha256(tokenValue);
+        String tokenHash = Sha256HashUtils.hash(tokenValue);
         if (isAttemptExceeded(tokenHash)) {
             log.warn("OTT consume failed: too many attempts. tokenHash={}", tokenHash);
             return null;
@@ -69,8 +66,8 @@ public class RedisOneTimeTokenService implements OneTimeTokenService {
             return null;
         }
 
-        redisTemplate.delete(tokenKey(tokenHash));
-        redisTemplate.delete(attemptKey(tokenHash));
+        redisTemplate.delete(RedisKeys.ottToken(tokenHash));
+        redisTemplate.delete(RedisKeys.ottAttempt(tokenHash));
         log.info("OTT consume success. username={}", lookupResult.userId());
         return new DefaultOneTimeToken(tokenValue, lookupResult.userId(), lookupResult.expiresAt());
     }
@@ -80,7 +77,7 @@ public class RedisOneTimeTokenService implements OneTimeTokenService {
     }
 
     private TokenLookupResult lookupToken(String tokenHash) {
-        String value = redisTemplate.opsForValue().get(tokenKey(tokenHash));
+        String value = redisTemplate.opsForValue().get(RedisKeys.ottToken(tokenHash));
         if (value == null || value.isBlank()) {
             return TokenLookupResult.notFound();
         }
@@ -115,14 +112,14 @@ public class RedisOneTimeTokenService implements OneTimeTokenService {
     }
 
     private void increaseAttempts(String subjectKey, Duration ttl) {
-        Long attempts = redisTemplate.opsForValue().increment(attemptKey(subjectKey));
+        Long attempts = redisTemplate.opsForValue().increment(RedisKeys.ottAttempt(subjectKey));
         if (attempts != null && attempts == 1L) {
-            redisTemplate.expire(attemptKey(subjectKey), ttl);
+            redisTemplate.expire(RedisKeys.ottAttempt(subjectKey), ttl);
         }
     }
 
     private int readAttempts(String subjectKey) {
-        String count = redisTemplate.opsForValue().get(attemptKey(subjectKey));
+        String count = redisTemplate.opsForValue().get(RedisKeys.ottAttempt(subjectKey));
         if (count == null || count.isBlank()) {
             return 0;
         }
@@ -130,28 +127,6 @@ public class RedisOneTimeTokenService implements OneTimeTokenService {
             return Integer.parseInt(count);
         } catch (NumberFormatException e) {
             return 0;
-        }
-    }
-
-    private String tokenKey(String tokenHash) {
-        return TOKEN_PREFIX + tokenHash;
-    }
-
-    private String attemptKey(String subjectKey) {
-        return ATTEMPT_PREFIX + subjectKey;
-    }
-
-    private String sha256(String value) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(value.getBytes(StandardCharsets.UTF_8));
-            StringBuilder sb = new StringBuilder(hash.length * 2);
-            for (byte b : hash) {
-                sb.append(String.format("%02x", b));
-            }
-            return sb.toString();
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 algorithm is not available", e);
         }
     }
 
