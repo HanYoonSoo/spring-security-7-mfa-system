@@ -1,7 +1,7 @@
 package com.hanyoonsoo.mfa.security.mfa;
 
 import com.hanyoonsoo.mfa.common.Sha256HashUtils;
-import com.hanyoonsoo.mfa.infra.utils.RedisKeys;
+import com.hanyoonsoo.mfa.infra.utils.RedisKeyFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
@@ -40,7 +40,7 @@ public class RedisOneTimeTokenService implements OneTimeTokenService {
         String tokenHash = Sha256HashUtils.hash(tokenValue);
         String value = request.getUsername() + "|" + expiresAt.toEpochMilli();
 
-        redisTemplate.opsForValue().set(RedisKeys.ottToken(tokenHash), value, expiresIn);
+        redisTemplate.opsForValue().set(RedisKeyFactory.ottToken(tokenHash), value, expiresIn);
         log.info("OTT generated. username={}, expiresAt={}", request.getUsername(), expiresAt);
         return new DefaultOneTimeToken(tokenValue, request.getUsername(), expiresAt);
     }
@@ -66,8 +66,8 @@ public class RedisOneTimeTokenService implements OneTimeTokenService {
             return null;
         }
 
-        redisTemplate.delete(RedisKeys.ottToken(tokenHash));
-        redisTemplate.delete(RedisKeys.ottAttempt(tokenHash));
+        redisTemplate.delete(RedisKeyFactory.ottToken(tokenHash));
+        redisTemplate.delete(RedisKeyFactory.ottAttempt(tokenHash));
         log.info("OTT consume success. username={}", lookupResult.userId());
         return new DefaultOneTimeToken(tokenValue, lookupResult.userId(), lookupResult.expiresAt());
     }
@@ -77,7 +77,7 @@ public class RedisOneTimeTokenService implements OneTimeTokenService {
     }
 
     private TokenLookupResult lookupToken(String tokenHash) {
-        String value = redisTemplate.opsForValue().get(RedisKeys.ottToken(tokenHash));
+        String value = redisTemplate.opsForValue().get(RedisKeyFactory.ottToken(tokenHash));
         if (value == null || value.isBlank()) {
             return TokenLookupResult.notFound();
         }
@@ -112,14 +112,14 @@ public class RedisOneTimeTokenService implements OneTimeTokenService {
     }
 
     private void increaseAttempts(String subjectKey, Duration ttl) {
-        Long attempts = redisTemplate.opsForValue().increment(RedisKeys.ottAttempt(subjectKey));
+        Long attempts = redisTemplate.opsForValue().increment(RedisKeyFactory.ottAttempt(subjectKey));
         if (attempts != null && attempts == 1L) {
-            redisTemplate.expire(RedisKeys.ottAttempt(subjectKey), ttl);
+            redisTemplate.expire(RedisKeyFactory.ottAttempt(subjectKey), ttl);
         }
     }
 
     private int readAttempts(String subjectKey) {
-        String count = redisTemplate.opsForValue().get(RedisKeys.ottAttempt(subjectKey));
+        String count = redisTemplate.opsForValue().get(RedisKeyFactory.ottAttempt(subjectKey));
         if (count == null || count.isBlank()) {
             return 0;
         }

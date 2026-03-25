@@ -3,7 +3,7 @@ package com.hanyoonsoo.mfa.infra.utils;
 import com.hanyoonsoo.mfa.common.Sha256HashUtils;
 import com.hanyoonsoo.mfa.infra.redis.enums.AuthCacheEnum;
 
-public final class RedisKeys {
+public final class RedisKeyFactory {
 
     private static final String DELIMITER = ":";
 
@@ -18,7 +18,7 @@ public final class RedisKeys {
 
     private static final String MAGIC_LINK_LIMIT_PREFIX = "mfa:limit:";
 
-    private RedisKeys() {
+    private RedisKeyFactory() {
     }
 
     public static String refreshToken(String userId) {
